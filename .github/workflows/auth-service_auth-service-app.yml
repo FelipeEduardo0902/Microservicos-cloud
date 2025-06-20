@@ -25,7 +25,7 @@ jobs:
 
       - name: npm install, build, and test
         run: |
-          cd cadastro-servicos
+          cd auth-service
           npm install
           npm run build --if-present
           echo "Ignorando testes por enquanto"
