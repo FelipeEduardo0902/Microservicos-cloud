@@ -7,5 +7,5 @@ app.use(express.json());
 
 app.use('/servicos', servicosRoutes);
 
-const PORT = process.env.PORTA_SERVICO || 3001;
+const PORT = process.env.PORTA_SERVICO || 8080;
 app.listen(PORT, () => console.log(`cadastro-servicos rodando na porta ${PORT}`));
