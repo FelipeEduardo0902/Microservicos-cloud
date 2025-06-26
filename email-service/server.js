@@ -7,10 +7,6 @@ const connectionString = process.env.AZURE_SERVICE_BUS_CONNECTION_STRING;
 const topicName = process.env.AZURE_SERVICE_BUS_TOPIC;
 const subscriptionName = process.env.AZURE_SERVICE_BUS_SUBSCRIPTION;
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Configuração do nodemailer
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
   port: process.env.EMAIL_PORT,
@@ -32,8 +28,7 @@ async function enviarEmail(servico) {
   console.log('E-mail enviado para:', servico.email);
 }
 
-// Função principal para consumir o tópico
-async function iniciarServiceBus() {
+async function main() {
   const sbClient = new ServiceBusClient(connectionString);
   const receiver = sbClient.createReceiver(topicName, subscriptionName);
 
@@ -58,13 +53,4 @@ async function iniciarServiceBus() {
   console.log('email-service ouvindo mensagens do Topic/Subscription...');
 }
 
-// Pequeno servidor só para manter o processo vivo no Azure
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', servico: 'email-service' });
-});
-
-// Inicialização
-app.listen(PORT, () => {
-  console.log(`Servidor de healthcheck rodando na porta ${PORT}`);
-  iniciarServiceBus().catch(console.error);
-});
+main();
