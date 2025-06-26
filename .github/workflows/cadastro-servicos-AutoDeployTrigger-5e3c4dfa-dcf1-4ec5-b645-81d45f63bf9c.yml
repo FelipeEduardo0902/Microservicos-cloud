@@ -1,0 +1,49 @@
+name: Trigger auto deployment for cadastro-servicos
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ cadastro-service ]
+    paths:
+    - '**'
+    - '.github/workflows/cadastro-servicos-AutoDeployTrigger-5e3c4dfa-dcf1-4ec5-b645-81d45f63bf9c.yml'
+
+  # Allow manual trigger 
+  workflow_dispatch:      
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions: 
+      id-token: write #This is required for requesting the OIDC JWT Token
+      contents: read #Required when GH token is used to authenticate with private repo
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.CADASTROSERVICOS_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.CADASTROSERVICOS_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.CADASTROSERVICOS_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}
+          _dockerfilePathKey_: _dockerfilePath_
+          _targetLabelKey_: _targetLabel_
+          registryUrl: meuacrcloud.azurecr.io
+          registryUsername: ${{ secrets.CADASTROSERVICOS_REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.CADASTROSERVICOS_REGISTRY_PASSWORD }}
+          containerAppName: cadastro-servicos
+          resourceGroup: aulaCloud
+          imageToBuild: meuacrcloud.azurecr.io/cadastro-servicos:${{ github.sha }}
+          _buildArgumentsKey_: |
+            _buildArgumentsValues_
+
+
