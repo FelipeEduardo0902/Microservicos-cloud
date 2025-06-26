@@ -1,4 +1,5 @@
 require('dotenv').config();
+const express = require('express');
 const { ServiceBusClient } = require('@azure/service-bus');
 const nodemailer = require('nodemailer');
 
@@ -16,6 +17,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// Função para enviar o e-mail
 async function enviarEmail(servico) {
   await transporter.sendMail({
     from: `"Plataforma de Serviços" <${process.env.EMAIL_USER}>`,
