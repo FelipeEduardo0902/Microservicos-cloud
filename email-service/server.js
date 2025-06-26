@@ -1,4 +1,5 @@
 require('dotenv').config();
+const express = require('express');
 const { ServiceBusClient } = require('@azure/service-bus');
 const nodemailer = require('nodemailer');
 
@@ -6,6 +7,10 @@ const connectionString = process.env.AZURE_SERVICE_BUS_CONNECTION_STRING;
 const topicName = process.env.AZURE_SERVICE_BUS_TOPIC;
 const subscriptionName = process.env.AZURE_SERVICE_BUS_SUBSCRIPTION;
 
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Configuração do nodemailer
 const transporter = nodemailer.createTransport({
   host: process.env.EMAIL_HOST,
   port: process.env.EMAIL_PORT,
@@ -16,6 +21,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// Função para enviar o e-mail
 async function enviarEmail(servico) {
   await transporter.sendMail({
     from: `"Plataforma de Serviços" <${process.env.EMAIL_USER}>`,
@@ -26,7 +32,8 @@ async function enviarEmail(servico) {
   console.log('E-mail enviado para:', servico.email);
 }
 
-async function main() {
+// Função principal para consumir o tópico
+async function iniciarServiceBus() {
   const sbClient = new ServiceBusClient(connectionString);
   const receiver = sbClient.createReceiver(topicName, subscriptionName);
 
@@ -51,4 +58,13 @@ async function main() {
   console.log('email-service ouvindo mensagens do Topic/Subscription...');
 }
 
-main();
+// Healthcheck para o Azure não derrubar o container
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', servico: 'email-service' });
+});
+
+// Inicia o servidor e o Service Bus listener
+app.listen(PORT, () => {
+  console.log(`Servidor do email-service rodando na porta ${PORT}`);
+  iniciarServiceBus().catch(console.error);
+});
