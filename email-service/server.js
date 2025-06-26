@@ -58,13 +58,13 @@ async function iniciarServiceBus() {
   console.log('email-service ouvindo mensagens do Topic/Subscription...');
 }
 
-// Pequeno servidor só para manter o processo vivo no Azure
+// Healthcheck para o Azure não derrubar o container
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', servico: 'email-service' });
 });
 
-// Inicialização
+// Inicia o servidor e o Service Bus listener
 app.listen(PORT, () => {
-  console.log(`Servidor de healthcheck rodando na porta ${PORT}`);
+  console.log(`Servidor do email-service rodando na porta ${PORT}`);
   iniciarServiceBus().catch(console.error);
 });
