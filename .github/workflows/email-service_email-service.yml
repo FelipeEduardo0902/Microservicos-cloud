@@ -72,5 +72,5 @@ jobs:
         with:
           app-name: 'email-service'
           slot-name: 'Production'
-          package: .
+          package: 'release.zip'
           
