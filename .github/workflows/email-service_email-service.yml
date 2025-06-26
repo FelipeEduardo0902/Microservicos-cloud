@@ -29,10 +29,10 @@ jobs:
           npm install
           npm run build --if-present
           echo "Ignorando testes por enquanto"
-
       - name: Zip artifact for deployment
         run: |
-          zip -r release.zip email-service/*
+          cd email-service
+          zip -r ../release.zip . -x "node_modules/*"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
