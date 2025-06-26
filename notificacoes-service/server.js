@@ -8,7 +8,7 @@ const bcrypt = require('bcryptjs');
 const app = express();
 app.use(express.json());
 
-// Configurações do banco
+// Configuração do banco
 const dbConfig = {
   user: process.env.DB_USER,
   password: process.env.DB_PASS,
@@ -16,7 +16,7 @@ const dbConfig = {
   database: process.env.DB_DATABASE,
   options: {
     encrypt: true,
-    trustServerCertificate: false,
+    trustServerCertificate: true,
   },
   port: parseInt(process.env.DB_PORT, 10),
 };
@@ -24,7 +24,7 @@ const dbConfig = {
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'secret_key';
 
-// Middleware para autenticação JWT
+// Middleware JWT
 function autenticarJWT(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ erro: 'Token não fornecido' });
@@ -37,7 +37,7 @@ function autenticarJWT(req, res, next) {
   });
 }
 
-// Middleware para autorização por papéis
+// Middleware por papéis
 function autorizarRoles(...roles) {
   return (req, res, next) => {
     if (!roles.includes(req.usuario.role)) {
@@ -47,7 +47,7 @@ function autorizarRoles(...roles) {
   };
 }
 
-// Conexão com banco
+// Conexão banco
 let pool;
 async function conectarBanco() {
   try {
@@ -58,24 +58,20 @@ async function conectarBanco() {
   }
 }
 
-// Configuração do Service Bus (TOPIC + SUBSCRIPTION)
+// Service Bus
 const connectionString = process.env.AZURE_SERVICE_BUS_CONNECTION_STRING;
 const topicName = process.env.AZURE_SERVICE_BUS_TOPIC;
 const subscriptionName = process.env.AZURE_SERVICE_BUS_SUBSCRIPTION;
 
-let serviceBusClient;
-let receiver;
-
 async function iniciarServiceBus() {
-  serviceBusClient = new ServiceBusClient(connectionString);
-  receiver = serviceBusClient.createReceiver(topicName, subscriptionName);
+  const sbClient = new ServiceBusClient(connectionString);
+  const receiver = sbClient.createReceiver(topicName, subscriptionName);
 
   receiver.subscribe({
     processMessage: async (message) => {
       console.log('Mensagem recebida:', message.body);
       const servico = message.body;
 
-      // Validação básica
       if (!servico.nome || !servico.descricao || !servico.categoria) {
         console.log('Mensagem inválida, descartando');
         await receiver.completeMessage(message);
@@ -83,8 +79,7 @@ async function iniciarServiceBus() {
       }
 
       try {
-        const request = pool.request();
-        await request
+        await pool.request()
           .input('nome', sql.VarChar, servico.nome)
           .input('descricao', sql.VarChar, servico.descricao)
           .input('categoria', sql.VarChar, servico.categoria)
@@ -94,26 +89,27 @@ async function iniciarServiceBus() {
             VALUES (@nome, @descricao, @categoria, @dataCadastro)
           `);
 
-        console.log('Serviço gravado com sucesso no banco.');
+        console.log('Serviço salvo no banco.');
         await receiver.completeMessage(message);
       } catch (err) {
-        console.error('Erro ao gravar no banco:', err);
+        console.error('Erro ao salvar no banco:', err);
         await receiver.abandonMessage(message);
       }
     },
-
     processError: async (err) => {
-      console.error('Erro no Service Bus receiver:', err);
+      console.error('Erro no Service Bus:', err);
     },
   });
+
+  console.log('notification-service ouvindo mensagens do Topic/Subscription...');
 }
 
-// Health check
+// Healthcheck
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', servico: 'notificacoes-service' });
+  res.json({ status: 'ok', servico: 'notification-service' });
 });
 
-// Rota protegida para listar serviços
+// Rota protegida
 app.get('/servicos', autenticarJWT, autorizarRoles('admin', 'prestador'), async (req, res) => {
   try {
     const result = await pool.request().query('SELECT * FROM Servicos');
@@ -124,7 +120,7 @@ app.get('/servicos', autenticarJWT, autorizarRoles('admin', 'prestador'), async 
   }
 });
 
-// Rota de login simulado
+// Login fake
 const usuariosFake = [
   { id: 1, username: 'admin', password: bcrypt.hashSync('admin123', 8), role: 'admin' },
   { id: 2, username: 'prestador', password: bcrypt.hashSync('prestador123', 8), role: 'prestador' },
@@ -151,10 +147,8 @@ async function main() {
 
   const PORT = process.env.PORTA_SERVICO || 3002;
   app.listen(PORT, () => {
-    console.log(`Servidor notificacoes-service rodando na porta ${PORT}`);
+    console.log(`notification-service rodando na porta ${PORT}`);
   });
-
-  process.stdin.resume(); // mantém o processo vivo
 }
 
 main().catch(err => {
